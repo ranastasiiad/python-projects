@@ -1,0 +1,28 @@
+### working with lines
+#read word from the end: word[::-1]
+#print a line with value and a whitespace: print("{} ".format(value))
+#print needed values in a three lines: print(f'{x1}\n{x2}\n{x3}')
+#split sentence and place words in the list: input().split()
+#print list in the string format: print(' '.join(list))
+
+
+### modules
+#string, math, random
+
+###OOP and class creation
+# class syntax
+class MyClass:
+    var = ...  # some variable
+
+    def do_smt(self):
+    # some method
+
+# basic method syntax
+class MyClass:
+    # the constructor
+    def __init__(self, arg1):
+        self.att = arg1
+
+    # custom method
+    def do_smt(self):
+        # does something

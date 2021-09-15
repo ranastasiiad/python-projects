@@ -1,0 +1,5 @@
+### tips from other codes
+# how to create PIN: pin = str(randint(1, 9999)).zfill(4)
+#sample from random: 
+random_card = '400000' + ''.join([str(n) for n in sample(range(9), 9)]) + '7'
+random_PIN = ''.join([str(n) for n in sample(range(9), 4)])

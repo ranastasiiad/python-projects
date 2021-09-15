@@ -1,0 +1,32 @@
+### basic select statement
+SELECT val1 [AS name1], ..., valN [AS nameN];
+### projection
+SELECT
+    col1 [AS alias1], ..., colN [AS aliasN]  
+FROM
+    table_name
+;
+### or just SELECT * FROM table_name;
+### where filtering
+SELECT
+    expr1 [AS alias1], ..., exprN [AS aliasN]  
+FROM
+    table_name
+WHERE
+    logical_expression
+;
+### creating
+CREATE DATABASE name;
+CREATE TABLE table_name ( 
+ column_1 column_1_type,
+ column_2 column_2_type,
+ ...., 
+ column_n column_n_type
+);
+### deleting
+DROP DATABASE students;
+DROP TABLE students_info; 
+DELETE FROM table_name
+DELETE FROM table_name WHERE logical_expression
+### adding new rows
+INSERT INTO table [(columns)] VALUES (values in the columns' order), [(another list of values), ..] ;

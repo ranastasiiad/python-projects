@@ -3,3 +3,131 @@
 #sample from random: 
 random_card = '400000' + ''.join([str(n) for n in sample(range(9), 9)]) + '7'
 random_PIN = ''.join([str(n) for n in sample(range(9), 4)])
+
+
+### final programm
+import random
+import sqlite3
+
+
+class CardsData:
+    def __init__(self):
+        self.INN = "400000"
+        self.CAN = None
+        self.CD = None
+        self.PIN = None
+        self.number = None
+        self.balance = 0
+
+    def create_CAN(self):
+        l = []
+        [l.append(str(random.randrange(10))) for i in range(9)]
+        self.CAN = ''.join(l)
+
+    def create_PIN(self):
+        l = []
+        [l.append(str(random.randrange(10))) for i in range(4)]
+        self.PIN = ''.join(l)
+
+    def create_CD(self):
+        digits = []
+        [digits.append(int(i)) for i in self.CAN]
+        for i in range(0, len(digits), 2):
+            digits[i] = digits[i] * 2
+            if digits[i] > 9:
+                digits[i] = digits[i] - 9
+        sum_digits = sum(digits) + 8
+        check_digit = 0
+        while (sum_digits + check_digit) % 10 != 0:
+            check_digit += 1
+        self.CD = str(check_digit)
+
+    def create_number(self):
+        self.number = self.INN + self.CAN + self.CD
+
+
+conn = sqlite3.connect('card.s3db')
+cur = conn.cursor()
+cur.execute('CREATE TABLE IF NOT EXISTS card (id INTEGER PRIMARY KEY, number TEXT ,pin TEXT, balance INTEGER DEFAULT 0);')
+conn.commit()
+Data = {}
+answer = None
+id_num = 0
+while answer != 0:
+    answer = int(input("1. Create an account\n2. Log into account\n0. Exit\n"))
+    if answer == 0:
+        print("\nBye!")
+
+    if answer == 1:
+        id_num += 1
+        new_card = CardsData()
+        new_card.create_CAN()
+        new_card.create_PIN()
+        new_card.create_CD()
+        new_card.create_number()
+        cur.execute('INSERT INTO card (number, pin) VALUES (?, ?);', (new_card.number, new_card.PIN))
+        conn.commit()
+        Data[new_card.number] = [new_card.PIN, new_card.balance]
+        print("\nYour card has been created")
+        print("Your card number:\n{}\nYour card PIN:\n{}\n".format(new_card.number, new_card.PIN))
+
+    if answer == 2:
+        card_number = input("\nEnter your card number:\n")
+        card_PIN = input("Enter your PIN:\n")
+        if card_number in Data.keys() and card_PIN == Data.get(card_number)[0]:
+            print("\nYou have successfully logged in!\n")
+            next_step = None
+            while next_step != 0:
+                next_step = int(input("1. Balance\n2. Add income\n3. Do transfer\n4. Close account\n5. Log out\n0. Exit\n"))
+                if next_step == 0:
+                    print("\nBye!")
+                    answer = 0
+                if next_step == 1:
+                    cur.execute('SELECT balance FROM card WHERE number = ?;', card_number)
+                    print(cur.fetchone())
+                    #print(Data[card_number][1])
+                if next_step == 2:
+                    income = int(input("Enter income:"))
+                    current_balance = cur.execute('SELECT balance FROM card WHERE number = ?;', (card_number,)).fetchall()[0][0]
+                    new_balance = income + current_balance
+                    cur.execute('UPDATE card SET balance = ? WHERE number = ?;', (new_balance, card_number,))
+                    conn.commit()
+                    print("Income was added!")
+                if next_step == 3:
+                    print("Transfer")
+                    tr_number = input("Enter card number:")
+                    digits = []
+                    [digits.append(int(i)) for i in tr_number]
+                    for i in range(0, len(digits), 2):
+                        digits[i] = digits[i] * 2
+                        if digits[i] > 9:
+                            digits[i] = digits[i] - 9
+                    sum_digits = sum(digits)
+                    if sum_digits % 10 != 0:
+                        print("Probably you made a mistake in the card number. Please try again!")
+                    if tr_number == card_number:
+                        print("You can't transfer money to the same account!")
+                    else:
+                        all_numbers = cur.execute('SELECT number FROM card;').fetchall()
+                        if (tr_number, ) not in all_numbers:
+                            print("Such a card does not exist.")
+                        else:
+                            tr_sum = int(input("Enter how much money you want to transfer:"))
+                            user_balance = cur.execute('SELECT balance FROM card WHERE number = ?;', (card_number, )).fetchall()[0][0]
+                            tr_user_balance = cur.execute('SELECT balance FROM card WHERE number = ?;', (tr_number, )).fetchall()[0][0]
+                            if tr_sum > user_balance:
+                                print("Not enough money!")
+                            else:
+                                cur.execute('UPDATE card SET balance = ? WHERE number = ?;', (user_balance - tr_sum, card_number, ))
+                                conn.commit()
+                                cur.execute('UPDATE card SET balance = ? WHERE number = ?;', (tr_user_balance + tr_sum, tr_number, ))
+                                conn.commit()
+                                print("Success!")
+                if next_step == 4:
+                    cur.execute('DELETE FROM card WHERE number = ?;', (card_number, ))
+                    conn.commit()
+                if next_step == 5:
+                    print("You have successfully logged out!")
+                    next_step = 0
+        else:
+            print("Wrong card number or PIN!")

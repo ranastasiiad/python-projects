@@ -15,6 +15,28 @@ FROM
 WHERE
     logical_expression
 ;
+### useful functions
+# number of all rows in a table;
+SELECT COUNT(*) FROM table;
+# unique values
+SELECT DISTINCT column FROM table;
+# limitimg
+SELECT * FROM table LIMIT number;
+### sorting
+SELECT column FROM table ORDER BY column [DESC]; (by default it is ascending)
+### naming
+SELECT column AS new_name FROM table;
+### grouping
+SELECT column FROM table GROUP BY column [HAVING logical_expression];
+### updating
+UPDATE table SET column = value WHERE condition;
+### retrieving rows - using a string pattern
+SELECT column FROM table WHERE column LIKE 'R%';
+# % replaces all other letters, so we can find all rows that start with R
+# beetwen two numbers inclusively
+... WHERE column BETWEEN number1 AND number2;
+# in (,)
+... WHERE column IN (value1, value2);
 ### creating
 CREATE DATABASE name;
 CREATE TABLE table_name ( 
@@ -23,6 +45,8 @@ CREATE TABLE table_name (
  ...., 
  column_n column_n_type
 );
+### useful functions
+DEFAULT (value by default), CHECK (constrain on adding), NOT NULL (except NULL values in a column)
 ### deleting
 DROP DATABASE students;
 DROP TABLE students_info; 

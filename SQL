@@ -54,3 +54,9 @@ DELETE FROM table_name
 DELETE FROM table_name WHERE logical_expression
 ### adding new rows
 INSERT INTO table [(columns)] VALUES (values in the columns' order), [(another list of values), ..] ;
+
+
+
+### useful functions
+# how to select only the name from the column with name and surname
+SELECT LEFT(column, LOCATE(' ', column)-1)  as only_name FROM table;

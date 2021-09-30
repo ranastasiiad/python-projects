@@ -1,3 +1,12 @@
+### basic.0
+SELECT [DISTINCT | ALL] поля_таблиц 
+FROM список_таблиц 
+[WHERE условия_на_ограничения_строк]
+[GROUP BY условия_группировки]
+[HAVING условия_на_ограничения_строк_после_группировки]
+[ORDER BY порядок_сортировки [ASC | DESC]]
+[LIMIT ограничение_количества_записей]
+
 ### basic select statement
 SELECT val1 [AS name1], ..., valN [AS nameN];
 ### projection
@@ -58,5 +67,85 @@ INSERT INTO table [(columns)] VALUES (values in the columns' order), [(another l
 
 
 ### useful functions
+
+
+### comparison operators
+=
+<=> - the same as =, but in case of NULL <=> NULL it will return TRUE (usually, the result of comparison with NULL is NULL)
+<>, != - not equaition
+<; <=; >; >=
+### special operators
+IS [NOT] NULL
+[NOT] BETWEEN min AND max
+[NOT] IN
+[NOT] LIKE string sample [ESCAPE sign] #this one hepls to identify needed string format, for example choose only name in the string with name and surname ('% surname')
+# Never% , %ing , _ing (% escapes any number of characters, _ escapes only one character)
+# in case we need  % in the string:
+SELECT job_id FROM Jobs
+WHERE progress LIKE '3!%' ESCAPE '!';
+#NOT, OR, AND, XOR (TRUE <=> only the one of two is TRUE)
 # how to select only the name from the column with name and surname
 SELECT LEFT(column, LOCATE(' ', column)-1)  as only_name FROM table;
+
+
+### GROUP BY 
+Следует иметь в виду, что для GROUP BY все значения NULL трактуются как равные, т.е. при группировке по полю, содержащему NULL-значения, все такие строки попадут в одну группу.
+Агрегатные функции применяются для значений, не равных NULL. Исключением является функция COUNT().
+
+SUM, AVG, COUNT, MIN, MAX
+
+Для фильтрации строк по значениям агрегатных функций используется оператор HAVING.
+
+SELECT [константы, агрегатные_функции, поля_группировки] 
+FROM имя_таблицы 
+GROUP BY поля_группировки
+HAVING условие_на_ограничение_строк_после_группировки
+
+WHERE — сначала выбираются записи по условию, а затем могут быть сгруппированы, отсортированы и т.д.
+HAVING — сначала группируются записи, а затем выбираются по условию, при этом, в отличие от WHERE, в нём можно использовать значения агрегатных функций
+
+### LIMIT
+SELECT поля_выборки
+FROM список_таблиц
+LIMIT [количество_пропущенных_записей,] количество_записей_для_вывода; (Если не указать количество пропущенных записей, то их отсчёт будет вестись с начала таблицы.)
+
+SELECT * FROM Company LIMIT 2, 3; == SELECT * FROM Company LIMIT 3 OFFSET 2;
+
+### Многотабличные запросы
+SELECT поля_таблиц
+FROM таблица_1 
+[INNER] | [[LEFT | RIGHT | FULL][OUTER]] JOIN таблица_2 
+    ON условие_соединения
+[[INNER] | [[LEFT | RIGHT | FULL][OUTER]] JOIN таблица_n 
+    ON условие_соединения]
+ 
+SELECT поля_таблиц
+FROM таблица_1 
+[INNER] | [[LEFT | RIGHT | FULL][OUTER]] JOIN таблица_2[ JOIN таблица_n] 
+    ON условие_соединения [AND условие_соединения]
+    
+По умолчанию, если не указаны какие-либо параметры, JOIN выполняется как INNER JOIN, то есть как внутреннее (перекрёстное) соединение таблиц.
+Внутреннее соединение — соединение двух таблиц, при котором каждая запись из первой таблицы соединяется с каждой записью второй таблицы, создавая тем самым все возможные комбинации записей обеих таблиц (декартово произведение).
+
+Другая реализация INNER JOIN:
+SELECT *
+FROM Payments, FamilyMembers
+WHERE family_member = member_id;
+
+Внешнее соединение может быть трёх типов: левое (LEFT), правое (RIGHT) и полное (FULL). По умолчанию оно является полным.
+Главным отличием внешнего соединения от внутреннего является то, что оно обязательно возвращает все строки одной (LEFT, RIGHT) или двух таблиц (FULL).
+
+Соединение FULL JOIN реализовано не во всех СУБД. Например, в MySQL оно отсутствует, однако его можно очень просто эмулировать:
+MySQL
+SELECT * 
+FROM левая_таблица 
+LEFT JOIN правая_таблица 
+    ON правая_таблица.ключ = левая_таблица.ключ
+
+UNION ALL
+
+SELECT * 
+FROM левая_таблица 
+RIGHT JOIN правая_таблица 
+    ON правая_таблица.ключ = левая_таблица.ключ
+WHERE левая_таблица.key IS NULL

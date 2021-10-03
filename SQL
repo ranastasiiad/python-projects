@@ -111,6 +111,26 @@ LIMIT [количество_пропущенных_записей,] количе
 
 SELECT * FROM Company LIMIT 2, 3; == SELECT * FROM Company LIMIT 3 OFFSET 2;
 
+### Вложенные запросы с EXISTS
+The EXISTS operator checks if the subquery returns any records or not. If the subquery returns any records, the EXISTS operator will return TRUE, otherwise, it will return FALSE.
+We will use the EXISTS operator to select all the suppliers who supply both milk and pasta:
+SELECT DISTINCT supplier 
+FROM suppliers AS milk_suppliers
+WHERE product = 'milk' AND 
+EXISTS (SELECT supplier
+FROM suppliers 
+WHERE product = 'pasta' AND supplier = milk_suppliers.supplier);
+
+### ANY
+The ANY operator can be used only after standard comparison operators such as =, !=, <=, etc.
+
+### IS [NOT] NULL
+The IS NULL operator returns TRUE if the value in the column is equal to NULL.
+### IS DISTINCT FROM
+The IS DISTINCT FROM operator is very similar to not equality check (!= or <>). 
+This operator checks if two values are equal and returns FALSE in case it's true and TRUE otherwise. 
+If both values are equal to NULL, the IS DISTINCT FROM operator will return FALSE, which distinguishes IS DISTINCT FROM operator from the standard not equality check.
+
 ### Многотабличные запросы
 SELECT поля_таблиц
 FROM таблица_1 

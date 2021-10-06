@@ -1,0 +1,104 @@
+import sqlite3
+import argparse
+
+
+db = sqlite3.connect('food_blog.db')
+sql = db.cursor()
+sql.execute("PRAGMA foreign_keys = ON;")
+db.commit()
+
+
+class Table:
+    def __init__(self, name):
+        self.name = name
+        self.id = f"{name[:-1]}_id"
+        self.column = f"{name[:-1]}_name"
+
+    def create(self):
+        sql.execute(f'CREATE TABLE IF NOT EXISTS {self.name} ({self.id} INTEGER PRIMARY KEY, {self.column} TEXT UNIQUE NOT NULL);')
+        db.commit()
+
+    def populate(self, information):
+        sql.execute(f"INSERT INTO {self.name} ({self.column}) VALUES (?);", (information,))
+        db.commit()
+
+
+data = {"meals": ("breakfast", "brunch", "lunch", "supper"),
+        "ingredients": ("milk", "cacao", "strawberry", "blueberry", "blackberry", "sugar"),
+        "measures": ("ml", "g", "l", "cup", "tbsp", "tsp", "dsp", "")}
+
+
+parser = argparse.ArgumentParser(description="This program prints recipes consisting of the ingredients you provide.")
+parser.add_argument("db")
+parser.add_argument("--ingredients")
+parser.add_argument("--meals")
+args = parser.parse_args()
+if args.ingredients is not None:
+    ingredients = set(args.ingredients)
+    meals = tuple(args.meals.split(","))
+    print(meals)
+    recipe_names_1 = sql.execute('SELECT recipe_name FROM recipes WHERE recipe_id IN (SELECT recipe_id FROM serve WHERE meal_id IN (SELECT meal_id FROM meals WHERE meal_name = {} ));'.format(meals[0])).fetchall()
+    recipe_names_2 = sql.execute("SELECT recipe_name FROM recipes WHERE recipe_id IN (SELECT recipe_id FROM quantity WHERE ingredient_id IN (SELECT ingredient_id FROM ingredients WHERE ingredient_name IN (?)));", (ingredients, )).fetchall()
+    print(recipe_names_1, recipe_names_2)
+
+else:
+    for key in data.keys():
+        table = Table(key)
+        if key == "measures":
+            sql.execute(f'CREATE TABLE IF NOT EXISTS {key} ({table.id} INTEGER PRIMARY KEY, {table.column} TEXT UNIQUE);')
+            db.commit()
+        else:
+            table.create()
+        for value in data[key]:
+            table.populate(value)
+    sql.execute("CREATE TABLE IF NOT EXISTS recipes (recipe_id INTEGER PRIMARY KEY, recipe_name TEXT NOT NULL, recipe_description TEXT);")
+    db.commit()
+    sql.execute("CREATE TABLE IF NOT EXISTS serve (serve_id INTEGER PRIMARY KEY, recipe_id INTEGER NOT NULL, meal_id INTEGER NOT NULL, FOREIGN KEY(recipe_id) REFERENCES recipes (recipe_id), FOREIGN KEY(meal_id) REFERENCES meals (meal_id));")
+    db.commit()
+    sql.execute("CREATE TABLE IF NOT EXISTS quantity (quantity_id INTEGER PRIMARY KEY, measure_id INTEGER NOT NULL, ingredient_id INTEGER NOT NULL, quantity INTEGER NOT NULL, recipe_id INTEGER NOT NULL, FOREIGN KEY(measure_id) REFERENCES measures (measure_id), FOREIGN KEY(ingredient_id) REFERENCES ingredients (ingredient_id), FOREIGN KEY(recipe_id) REFERENCES recipes (recipe_id)) ")
+    db.commit()
+    print("Pass the empty recipe name to exit")
+    recipe_name = input("Recipe name: ")
+    while recipe_name != "":
+        recipe_description = input("Recipe description: ")
+        recipe_id_auto = sql.execute("INSERT INTO recipes (recipe_name, recipe_description) VALUES (?, ?);", (recipe_name, recipe_description, )).lastrowid
+        db.commit()
+        rows_number = sql.execute("SELECT COUNT(meal_id) FROM meals").fetchone()
+        available_meals = sql.execute("SELECT meal_id, meal_name FROM meals")
+        l_data = []
+        for i in range(rows_number[0]):
+            t_data = available_meals.fetchone()
+            s_data = f"{str(t_data[0])}) {t_data[1]}"
+            l_data.append(s_data)
+        print(' '.join(l_data))
+        meal_time = input("When the dish can be served: ")
+        meal_time_list = meal_time.split(' ')
+        for i in meal_time_list:
+            row = int(i)
+            sql.execute("INSERT INTO serve (meal_id, recipe_id) VALUES (?, ?);", (row, recipe_id_auto,))
+            db.commit()
+        ingredients_info = input("Input quantity of ingredient <press enter to stop>: ")
+        while ingredients_info != "":
+            ingredients_info_list = ingredients_info.split(' ')
+            if len(ingredients_info_list) != 3:
+                ingredients_info_list.insert(1, "")
+            if ingredients_info_list[1] == "t":
+                print("The measure is not conclusive!")
+            else:
+                if ingredients_info_list[2] == "berry":
+                    print("The ingredient is not conclusive!")
+
+                else:
+                    if ingredients_info_list[2] == "straw":
+                        ingredients_info_list[2] = "strawberry"
+                    elif ingredients_info_list[2] == "black":
+                        ingredients_info_list[2] = "blackberry"
+                    elif ingredients_info_list[2] == "blue":
+                        ingredients_info_list[2] = "blueberry"
+                    measure_id_auto = sql.execute("SELECT measure_id FROM measures WHERE measure_name = ?;", (ingredients_info_list[1],)).fetchone()
+                    ingredient_id_auto = sql.execute("SELECT ingredient_id FROM ingredients WHERE ingredient_name = ?;", (ingredients_info_list[2],)).fetchone()
+                    sql.execute("INSERT INTO quantity (quantity, recipe_id, measure_id, ingredient_id) VALUES (?, ?, ?, ?);", (int(ingredients_info_list[0]), recipe_id_auto, measure_id_auto[0], ingredient_id_auto[0], ))
+                    db.commit()
+            ingredients_info = input("Input quantity of ingredient <press enter to stop>: ")
+        recipe_name = input("Recipe name: ")
+    db.close()

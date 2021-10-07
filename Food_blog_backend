@@ -8,21 +8,6 @@ sql.execute("PRAGMA foreign_keys = ON;")
 db.commit()
 
 
-class Table:
-    def __init__(self, name):
-        self.name = name
-        self.id = f"{name[:-1]}_id"
-        self.column = f"{name[:-1]}_name"
-
-    def create(self):
-        sql.execute(f'CREATE TABLE IF NOT EXISTS {self.name} ({self.id} INTEGER PRIMARY KEY, {self.column} TEXT UNIQUE NOT NULL);')
-        db.commit()
-
-    def populate(self, information):
-        sql.execute(f"INSERT INTO {self.name} ({self.column}) VALUES (?);", (information,))
-        db.commit()
-
-
 data = {"meals": ("breakfast", "brunch", "lunch", "supper"),
         "ingredients": ("milk", "cacao", "strawberry", "blueberry", "blackberry", "sugar"),
         "measures": ("ml", "g", "l", "cup", "tbsp", "tsp", "dsp", "")}
@@ -34,29 +19,61 @@ parser.add_argument("--ingredients")
 parser.add_argument("--meals")
 args = parser.parse_args()
 if args.ingredients is not None:
-    ingredients = set(args.ingredients)
-    meals = tuple(args.meals.split(","))
-    print(meals)
-    recipe_names_1 = sql.execute('SELECT recipe_name FROM recipes WHERE recipe_id IN (SELECT recipe_id FROM serve WHERE meal_id IN (SELECT meal_id FROM meals WHERE meal_name = {} ));'.format(meals[0])).fetchall()
-    recipe_names_2 = sql.execute("SELECT recipe_name FROM recipes WHERE recipe_id IN (SELECT recipe_id FROM quantity WHERE ingredient_id IN (SELECT ingredient_id FROM ingredients WHERE ingredient_name IN (?)));", (ingredients, )).fetchall()
-    print(recipe_names_1, recipe_names_2)
+    ingredients = args.ingredients.split(",")
+    meals = args.meals.split(",")
+
+    recipes_m = set()
+    for i in range(len(meals)):
+        meal_name_needed = meals[i]
+        recipes_m_list = sql.execute('SELECT recipe_id FROM serve WHERE meal_id IN (SELECT meal_id FROM meals WHERE meal_name = ? );', (meal_name_needed, )).fetchall()
+        for j in recipes_m_list:
+            recipes_m.add(j[0])
+
+    recipes_i = {}
+    for i in range(len(ingredients)):
+        ing_name_needed = ingredients[i]
+        recipes_i_list = sql.execute('SELECT recipe_id FROM quantity WHERE ingredient_id = (SELECT ingredient_id FROM ingredients WHERE ingredient_name = ?);', (ing_name_needed, )).fetchall()
+        ing_set = set()
+        for j in recipes_i_list:
+            ing_set.add(j[0])
+        recipes_i[i] = ing_set
+
+    all_recipes_id = set()
+    all_recipes_id_list = sql.execute('SELECT recipe_id FROM recipes;').fetchall()
+    for i in all_recipes_id_list:
+        all_recipes_id.add(i[0])
+
+    for i in recipes_i.values():
+        all_recipes_id = all_recipes_id.intersection(i)
+
+    recipes_needed = recipes_m.intersection(all_recipes_id)
+    final_list = []
+    for i in range(len(recipes_needed)):
+        recipe_id_ = list(recipes_needed)[i]
+        recipes_name_needed = sql.execute('SELECT recipe_name FROM recipes WHERE recipe_id = ?;', (recipe_id_, )).fetchall()
+        final_list.append(recipes_name_needed[0][0])
+    if len(final_list) == 0:
+        print("There are no such recipes in the database")
+    else:
+        print(final_list)
 
 else:
-    for key in data.keys():
-        table = Table(key)
-        if key == "measures":
-            sql.execute(f'CREATE TABLE IF NOT EXISTS {key} ({table.id} INTEGER PRIMARY KEY, {table.column} TEXT UNIQUE);')
-            db.commit()
-        else:
-            table.create()
-        for value in data[key]:
-            table.populate(value)
+    # creation of tables
+    sql.execute("CREATE TABLE IF NOT EXISTS meals (meal_id INTEGER PRIMARY KEY, meal_name TEXT UNIQUE NOT NULL);")
+    sql.execute("CREATE TABLE IF NOT EXISTS ingredients (ingredient_id INTEGER PRIMARY KEY, ingredient_name TEXT UNIQUE NOT NULL);")
+    sql.execute("CREATE TABLE IF NOT EXISTS measures (measure_id INTEGER PRIMARY KEY, measure_name TEXT UNIQUE);")
     sql.execute("CREATE TABLE IF NOT EXISTS recipes (recipe_id INTEGER PRIMARY KEY, recipe_name TEXT NOT NULL, recipe_description TEXT);")
-    db.commit()
     sql.execute("CREATE TABLE IF NOT EXISTS serve (serve_id INTEGER PRIMARY KEY, recipe_id INTEGER NOT NULL, meal_id INTEGER NOT NULL, FOREIGN KEY(recipe_id) REFERENCES recipes (recipe_id), FOREIGN KEY(meal_id) REFERENCES meals (meal_id));")
-    db.commit()
     sql.execute("CREATE TABLE IF NOT EXISTS quantity (quantity_id INTEGER PRIMARY KEY, measure_id INTEGER NOT NULL, ingredient_id INTEGER NOT NULL, quantity INTEGER NOT NULL, recipe_id INTEGER NOT NULL, FOREIGN KEY(measure_id) REFERENCES measures (measure_id), FOREIGN KEY(ingredient_id) REFERENCES ingredients (ingredient_id), FOREIGN KEY(recipe_id) REFERENCES recipes (recipe_id)) ")
     db.commit()
+    # insertion of initial information
+    for key, value in data.items():
+        n = 0
+        for n, v in enumerate(value):
+            n += 1
+            sql.execute(f"INSERT INTO {key} VALUES (?, ?);", (n, v))
+            db.commit()
+    # communication with the user
     print("Pass the empty recipe name to exit")
     recipe_name = input("Recipe name: ")
     while recipe_name != "":
